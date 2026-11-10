@@ -2,36 +2,29 @@
 
 ## Tools
 
-- [Vitest](https://vitest.dev/) runs the suites in `test/`.
-- Coverage is collected with V8 (`@vitest/coverage-v8`) over `src/`.
+- Vitest (`vitest`) is used in `test/index.test.ts`.
+- The test file imports the public API from `../src/index.js`: `checkHeaders`, `formatReport`, `HeadersCheckError`, `parseHsts` and `run`.
 
 ## Commands
 
-```sh
-npm test            # vitest run --coverage
-npx vitest          # watch mode while developing
-npm run check       # every gate, including tests
-```
+- Run the suite with the project's Vitest command, for example `npx vitest run`.
+- The test file itself needs no network: CLI tests inject `io.transport` or mock `globalThis.fetch`.
 
 ## Rules
 
-- Coverage must stay at or above 80 % for lines, branches, functions and statements (`vitest.config.ts`).
-  Lowering the thresholds is not allowed.
-- Test through the public entry point (`src/index.ts`) and assert observable behavior: return values,
-  thrown errors and their messages.
-- Each bug fix adds a test that fails without the fix.
-- Tests are deterministic: no network, no real clock or randomness without injection, no shared state between
-  tests. Temporary files go to the OS temp directory and are removed by the test.
+- Tests assert observable behavior through the public entry point: `Finding[]` values, thrown `HeadersCheckError` codes, formatted reports and CLI stdout/stderr plus return codes.
+- Network is not used directly; `run` tests use an injected transport or replace `globalThis.fetch` and restore it after each test.
+- Cases use explicit header arrays and fixed URLs; no clock, randomness or shared state is used.
 
 ## Tiers
 
-- Local tier (every gate run, coverage measured here): unit and property tests, plus conformance on small
-  fixtures kept in the repository.
-- CI tier: conformance that needs an external tool or a download. Name them `test/<name>.conformance.test.ts`; `vitest.config.ts` excludes them locally
-  (unless `FABRICA_CI=1`). The CI `conformance` job sets `FABRICA_CI=1` and runs the full suite. Tools are installed
-  by the optional `ci/conformance-setup.sh` (bash, CI only; verify every download against a pinned SHA-256), and
-  tagged tests skip cleanly when their tool is missing.
+- The only test file present is `test/index.test.ts`. It contains `describe` blocks for `parseHsts`, `checkHeaders`, `formatReport` and `run`.
+- `parseHsts` covers quoted and token `max-age`, `includeSubDomains`, `preload`, missing, repeated, non-integer and negative `max-age`, values on flags, unknown directives and case-insensitive names.
+- `checkHeaders` covers the good-header acceptance case; H001 missing, invalid and low max-age plus the http/https difference; H002 including Report-Only; H003 trim and case; H004 CSP `frame-ancestors` versus `X-Frame-Options`; H005 last recognised token; H006; H007; H008; H009 per-cookie evaluation, missing attributes, name truncation and no cookie value in messages; limits; URL validation; sorting; and `Headers` input.
+- `formatReport` covers empty text, text lines and JSON.
+- `run` covers exit codes 0, 1 and 2, `--format json`, usage errors, invalid URLs, fetch failures, injected transport and the default `fetch` path with `redirect: 'manual'`.
+- No conformance or CI-only test files are present in the repository content.
 
 ## Reports
 
-Coverage reports are written to `coverage/` (text summary and `lcov`). The folder is ignored by git.
+- The tests produce Vitest pass/fail output. The test source does not create report files or define coverage thresholds.

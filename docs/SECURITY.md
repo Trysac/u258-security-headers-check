@@ -1,31 +1,22 @@
-# Security practices
+# Security
 
-How this repository keeps the package and its users safe. The disclosure policy is in
-[../SECURITY.md](../SECURITY.md).
+`@trysac/security-headers-check` audits response headers. Inputs are untrusted header pairs or a Fetch `Headers` object plus a URL. `checkHeaders` does not perform network I/O; `run` fetches only when the caller does not supply a `transport`.
 
-## Secrets
+## Threat model
 
-- No secrets, tokens or credentials in the repository, commit history, logs or prompts.
-- `gitleaks` runs as the last step of `npm run check` and as a dedicated CI job. Its configuration is
-  `.gitleaks.toml`.
-- Publishing credentials live only in the CI secret store or the maintainer's local npm configuration.
+Defended:
 
-## Dependencies
+- Header pair count and per-value size are bounded before rule evaluation: more than 200 pairs throws `too_many_headers`; any value over 16,384 characters throws `header_too_large`.
+- URLs are parsed and must use `http:` or `https:`; otherwise `checkHeaders` throws `invalid_url` and `run` prints `invalid_url` and returns 2.
+- HSTS grammar is parsed per RFC 6797 §6.1; repeated directives, missing `max-age`, non-integer or negative `max-age`, and values on `includeSubDomains` or `preload` return `null` and yield H001 `high`.
+- Findings never include cookie values. H009 messages report only the cookie name, truncated to 64 characters, and list missing `Secure`, `HttpOnly`, `SameSite` attributes.
+- The default CLI transport calls `fetch(url, { redirect: 'manual' })`, so it does not follow redirects automatically.
+- The library has no logging and no runtime dependencies.
 
-- Runtime dependencies are avoided; development dependencies are limited to the toolchain listed in
-  [STACK.md](STACK.md).
-- Dependabot opens weekly updates for npm packages and GitHub Actions.
-- Commit the generated `package-lock.json` so installs are reproducible.
+Not defended:
 
-## Code
-
-- No `eval`, dynamic `Function` construction or shelling out from library code.
-- Inputs from callers are validated and rejected with explicit errors.
-- The `security` step of `npm run check` runs ESLint with eslint-plugin-security only (Biome stays the
-  linter). Its configuration is `scripts/eslint-security.config.mjs`; inline `eslint-disable` comments are
-  ignored, so a finding is fixed in the code, never silenced.
-
-## Publishing
-
-- Packages are published from a clean checkout after `npm run check` passes.
-- Only `dist/` is included in the published tarball.
+- The library does not restrict the URL host, scheme beyond `http:` or `https:`, DNS resolution or private address ranges; callers that pass untrusted URLs to `run` or a custom transport are responsible for SSRF controls.
+- A custom `transport` can follow redirects, add credentials or read any origin; its behavior is outside the library's control.
+- `checkHeaders` does not analyze CSP policy quality, crawl sites, check TLS configuration, scan response bodies or assign grades.
+- Error messages can include the invalid URL string (`invalid_url` from `checkHeaders`), a header name and size (`header_too_large`), or a pair count (`too_many_headers`); the CLI prints only the error code to stderr.
+- Memory use is bounded by the header limits after the input is materialized; the caller controls how the header array or `Headers` object is built.
