@@ -1,15 +1,20 @@
 # @trysac/security-headers-check
 
-[![npm version](https://img.shields.io/npm/v/@trysac/security-headers-check.svg)](https://www.npmjs.com/package/@trysac/security-headers-check)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Sites ship without HSTS, with X-Frame-Options ALLOW-FROM that browsers ignore, or with session cookies missing Secure and HttpOnly, and nobody notices until an audit. Online scanners cannot run in CI against staging, and ad hoc scripts check presence but not the header grammar. This library checks a set of response headers with explicit rules, parses HSTS per its RFC and never prints cookie values.
 
 ## Install
 
-```bash
-npm install @trysac/security-headers-check
+Not published to npm yet. Build it from a clone, then install it from the local path:
+
+```sh
+git clone https://github.com/Trysac/u258-security-headers-check.git
+cd u258-security-headers-check && npm ci && npm run build
+cd ../your-project && npm install ../u258-security-headers-check
 ```
+
+Imports keep the package name: `import { ... } from "@trysac/security-headers-check"`.
 
 ## Usage
 
